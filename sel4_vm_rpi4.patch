@@ -1,0 +1,660 @@
+
+project kernel/
+diff --git a/src/plat/bcm2711/overlay-rpi4.dts b/src/plat/bcm2711/overlay-rpi4.dts
+index e0c525311..db2c454a7 100644
+--- a/src/plat/bcm2711/overlay-rpi4.dts
++++ b/src/plat/bcm2711/overlay-rpi4.dts
+@@ -9,10 +9,10 @@
+ / {
+ 	chosen {
+ 		seL4,elfloader-devices =
+-		    "serial1";
++		    "serial0";
+ 
+ 		seL4,kernel-devices =
+-		    "serial1",
++		    "serial0",
+ 		    &{/soc/interrupt-controller@40041000},
+ 		    &{/soc/local_intc@40000000},
+ 		    &{/timer};
+@@ -44,9 +44,7 @@
+ 	memory@0 {
+ 		device_type = "memory";
+ 		reg = < 0x00000000 0x00000000 0x3b400000
+-			0x00000000 0x40000000 0xbc000000
+-			0x00000001 0x00000000 0x80000000
+-			0x00000001 0x80000000 0x80000000 >;
++			0x00000000 0x40000000 0xbc000000 >;
+ 	};
+ 
+ 	reserved-memory {
+@@ -78,5 +76,15 @@
+ 			reg = < 0x00000000 0x3b400000 0x04c00000 >;
+ 			no-map;
+ 		};
++
++		reserved-memory@40000000 {
++			reg = < 0x00 0x40000000 0x20000000 >;
++			no-map;
++		};
++
++		reserved-memory@10000000 {
++			reg = < 0x00 0x10000000 0x20000000 >;
++			no-map;
++		};
+ 	};
+ };
+
+project projects/camkes-vm-images/
+diff --git a/rpi4/rpi4.dts b/rpi4/rpi4.dts
+new file mode 100644
+index 0000000..ab1dd51
+--- /dev/null
++++ b/rpi4/rpi4.dts
+@@ -0,0 +1,336 @@
++/*
++ * Copyright Linux Kernel Team
++ *
++ * SPDX-License-Identifier: GPL-2.0-only
++ *
++ * This file is derived from an intermediate build stage of the
++ * Linux kernel. The licenses of all input files to this process
++ * are compatible with GPL-2.0-only.
++ */
++
++/dts-v1/;
++
++/memreserve/	0x0000000000000000 0x0000000000001000;
++/ {
++	compatible = "raspberrypi,4-model-b\0brcm,bcm2711";
++	model = "Raspberry Pi 4 Model B";
++	#address-cells = <0x02>;
++	#size-cells = <0x01>;
++	interrupt-parent = <0x01>;
++
++	aliases {
++		serial0 = "/soc/serial@7e201000";
++	};
++ 
++	chosen {
++		stdout-path = "serial0:115200n8";
++		bootargs = "console=ttyAMA0,115200n8 console=tty0 earlycon=pl011,mmio32,0xfe201000 debug loglevel=8 root=/dev/mmcblk1p2 rootfstype=ext4 fsck.repair=yes rootwait";
++	};
++
++	memory@40000000 {
++		device_type = "memory";
++		reg = <0x00 0x10000000 0x20000000 0x00 0x40000000 0x20000000>;
++	};
++
++	reserved-memory {
++		#address-cells = <0x02>;
++		#size-cells = <0x01>;
++		ranges;
++
++		linux,cma {
++			compatible = "shared-dma-pool";
++			size = <0x4000000>;
++			reusable;
++			linux,cma-default;
++			alloc-ranges = <0x00 0x00 0x40000000>;
++		};
++	};
++
++	soc {
++		compatible = "simple-bus";
++		#address-cells = <0x01>;
++		#size-cells = <0x01>;
++		ranges = <0x7e000000 0x00 0xfe000000 0x1800000 0x7c000000 0x00 0xfc000000 0x2000000 0x40000000 0x00 0xff800000 0x800000>;
++		dma-ranges = <0xc0000000 0x00 0x00 0x40000000>;
++
++		cprman@7e101000 {
++			compatible = "brcm,bcm2711-cprman";
++			#clock-cells = <0x01>;
++			reg = <0x7e101000 0x2000>;
++			clocks = <0x03 0x04 0x00 0x04 0x01 0x04 0x02 0x05 0x00 0x05 0x01 0x05 0x02>;
++			phandle = <0x06>;
++		};
++
++		dsi@7e209000 {
++			compatible = "brcm,bcm2835-dsi0";
++			reg = <0x7e209000 0x78>;
++			interrupts = <0x00 0x64 0x04>;
++			#address-cells = <0x01>;
++			#size-cells = <0x00>;
++			#clock-cells = <0x01>;
++			clocks = <0x06 0x20 0x06 0x2f 0x06 0x31>;
++			clock-names = "phy\0escape\0pixel";
++			clock-output-names = "dsi0_byte\0dsi0_ddr2\0dsi0_ddr";
++			status = "disabled";
++			power-domains = <0x0b 0x11>;
++			phandle = <0x04>;
++		};
++
++		dsi@7e700000 {
++			compatible = "brcm,bcm2835-dsi1";
++			reg = <0x7e700000 0x8c>;
++			interrupts = <0x00 0x6c 0x04>;
++			#address-cells = <0x01>;
++			#size-cells = <0x00>;
++			#clock-cells = <0x01>;
++			clocks = <0x06 0x23 0x06 0x30 0x06 0x32>;
++			clock-names = "phy\0escape\0pixel";
++			clock-output-names = "dsi1_byte\0dsi1_ddr2\0dsi1_ddr";
++			status = "disabled";
++			power-domains = <0x0b 0x12>;
++			phandle = <0x05>;
++		};
++
++		serial@7e201000 {
++			compatible = "arm,pl011\0arm,primecell";
++			reg = <0x7e201000 0x200>;
++			interrupts = <0x00 0x79 0x04>;
++			clocks = <0x06 0x13 0x06 0x14>;
++			clock-names = "uartclk\0apb_pclk";
++			arm,primecell-periphid = <0x241011>;
++			uart-has-rtscts;
++			status = "okay";
++		};
++
++		dma@7e007000 {
++			compatible = "brcm,bcm2835-dma";
++			reg = <0x7e007000 0xb00>;
++			interrupts = <0x00 0x50 0x04 0x00 0x51 0x04 0x00 0x52 0x04 0x00 0x53 0x04 0x00 0x54 0x04 0x00 0x55 0x04 0x00 0x56 0x04 0x00 0x57 0x04 0x00 0x57 0x04 0x00 0x58 0x04 0x00 0x58 0x04>;
++			interrupt-names = "dma0\0dma1\0dma2\0dma3\0dma4\0dma5\0dma6\0dma7\0dma8\0dma9\0dma10";
++			#dma-cells = <0x01>;
++			brcm,dma-channel-mask = <0x7f5>;
++			phandle = <0x19>;
++		};
++
++		interrupt-controller@40041000 {
++			interrupt-controller;
++			#interrupt-cells = <0x03>;
++			compatible = "arm,gic-400";
++			reg = <0x40041000 0x1000 0x40042000 0x2000 0x40044000 0x2000 0x40046000 0x2000>;
++			interrupts = <0x01 0x09 0xf04>;
++			phandle = <0x01>;
++		};
++
++		sdhci@7e300000 {
++			compatible = "brcm,bcm2835-sdhci";
++			reg = <0x7e300000 0x100>;
++			interrupts = <0x00 0x7e 0x04>;
++			clocks = <0x06 0x1c>;
++			status = "okay";
++			#address-cells = <0x01>;
++			#size-cells = <0x00>;
++			bus-width = <0x04>;
++			non-removable;
++			mmc-pwrseq = <0x0f>;
++
++			wifi@1 {
++				reg = <0x01>;
++				compatible = "brcm,bcm4329-fmac";
++			};
++		};
++
++		firmware {
++			compatible = "raspberrypi,bcm2835-firmware\0simple-mfd";
++			#address-cells = <0x01>;
++			#size-cells = <0x01>;
++			mboxes = <0x1c>;
++			dma-ranges;
++			phandle = <0x1d>;
++
++			clocks {
++				compatible = "raspberrypi,firmware-clocks";
++				#clock-cells = <0x01>;
++				phandle = <0x10>;
++			};
++
++			gpio {
++				compatible = "raspberrypi,firmware-gpio";
++				gpio-controller;
++				#gpio-cells = <0x02>;
++				gpio-line-names = "BT_ON\0WL_ON\0PWR_LED_OFF\0GLOBAL_RESET\0VDD_SD_IO_SEL\0CAM_GPIO\0SD_PWR_ON\0";
++				status = "okay";
++				phandle = <0x09>;
++			};
++
++			reset {
++				compatible = "raspberrypi,firmware-reset";
++				#reset-cells = <0x01>;
++				phandle = <0x25>;
++			};
++		};
++
++		mailbox@7e00b880 {
++			compatible = "brcm,bcm2835-mbox";
++			reg = <0x7e00b880 0x40>;
++			interrupts = <0x00 0x21 0x04>;
++			#mbox-cells = <0x00>;
++			phandle = <0x1c>;
++		};
++
++		mailbox@7e00b840 {
++			compatible = "brcm,bcm2835-vchiq";
++			reg = <0x7e00b840 0x3c>;
++			interrupts = <0x00 0x22 0x04>;
++		};
++
++	};
++
++	wifi-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <0x09 0x01 0x01>;
++		phandle = <0x0f>;
++	};
++
++	scb {
++		compatible = "simple-bus";
++		#address-cells = <0x02>;
++		#size-cells = <0x01>;
++		ranges = <0x00 0x7c000000 0x00 0xfc000000 0x3800000 0x06 0x00 0x06 0x00 0x40000000>;
++
++		pcie@7d500000 {
++			compatible = "brcm,bcm2711-pcie";
++			reg = <0x00 0x7d500000 0x9310>;
++			device_type = "pci";
++			#address-cells = <0x03>;
++			#interrupt-cells = <0x01>;
++			#size-cells = <0x02>;
++			interrupts = <0x00 0x94 0x04 0x00 0x94 0x04>;
++			interrupt-names = "pcie\0msi";
++			interrupt-map-mask = <0x00 0x00 0x00 0x07>;
++			interrupt-map = <0x00 0x00 0x00 0x01 0x01 0x00 0x8f 0x04>;
++			msi-controller;
++			msi-parent = <0x24>;
++			ranges = <0x2000000 0x00 0xf8000000 0x06 0x00 0x00 0x4000000>;
++			dma-ranges = <0x2000000 0x00 0x00 0x00 0x00 0x00 0xc0000000>;
++			brcm,enable-ssc;
++			phandle = <0x24>;
++
++			pci@0,0 {
++				#address-cells = <0x03>;
++				#size-cells = <0x02>;
++				ranges;
++				reg = <0x00 0x00 0x00 0x00 0x00>;
++
++				usb@0,0 {
++					reg = <0x10000 0x00 0x00 0x00 0x00>;
++				};
++			};
++		};
++	};
++
++	emmc2bus {
++		compatible = "simple-bus";
++		#address-cells = <0x02>;
++		#size-cells = <0x01>;
++		ranges = <0x00 0x7e000000 0x00 0xfe000000 0x1800000>;
++		dma-ranges = <0x00 0xc0000000 0x00 0x00 0x40000000>;
++
++		emmc2@7e340000 {
++			compatible = "brcm,bcm2711-emmc2";
++			reg = <0x00 0x7e340000 0x100>;
++			interrupts = <0x00 0x7e 0x04>;
++			clocks = <0x06 0x33>;
++			status = "okay";
++			vqmmc-supply = <0x1e>;
++			vmmc-supply = <0x1f>;
++			broken-cd;
++		};
++	};
++
++	sd_io_1v8_reg {
++		compatible = "regulator-gpio";
++		regulator-name = "vdd-sd-io";
++		regulator-min-microvolt = <0x1b7740>;
++		regulator-max-microvolt = <0x325aa0>;
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-settling-time-us = <0x1388>;
++		gpios = <0x09 0x04 0x00>;
++		states = <0x1b7740 0x01 0x325aa0 0x00>;
++		status = "okay";
++		phandle = <0x1e>;
++	};
++
++	sd_vcc_reg {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc-sd";
++		regulator-min-microvolt = <0x325aa0>;
++		regulator-max-microvolt = <0x325aa0>;
++		regulator-boot-on;
++		enable-active-high;
++		gpio = <0x09 0x06 0x00>;
++		phandle = <0x1f>;
++	};
++
++	clocks {
++
++		clk-osc {
++			compatible = "fixed-clock";
++			#clock-cells = <0x00>;
++			clock-output-names = "osc";
++			clock-frequency = <0x337f980>;
++			phandle = <0x03>;
++		};
++
++		clk-usb {
++			compatible = "fixed-clock";
++			#clock-cells = <0x00>;
++			clock-output-names = "otg";
++			clock-frequency = <0x1c9c3800>;
++			phandle = <0x12>;
++		};
++	};
++
++	clk-27M {
++		#clock-cells = <0x00>;
++		compatible = "fixed-clock";
++		clock-frequency = <0x19bfcc0>;
++		clock-output-names = "27MHz-clock";
++		phandle = <0x1a>;
++	};
++
++	clk-108M {
++		#clock-cells = <0x00>;
++		compatible = "fixed-clock";
++		clock-frequency = <0x66ff300>;
++		clock-output-names = "108MHz-clock";
++		phandle = <0x16>;
++	};
++
++	arm-pmu {
++		compatible = "arm,cortex-a72-pmu\0arm,armv8-pmuv3";
++		interrupts = <0x00 0x10 0x04>;
++		interrupt-affinity = <0x20>;
++	};
++
++	timer {
++		compatible = "arm,armv8-timer";
++		interrupts = <0x01 0x0d 0xf08 0x01 0x0e 0xf08 0x01 0x0b 0xf08 0x01 0x0a 0xf08>;
++		arm,cpu-registers-not-fw-configured;
++	};
++
++	cpus {
++		#address-cells = <0x01>;
++		#size-cells = <0x00>;
++		enable-method = "brcm,bcm2836-smp";
++
++		cpu@0 {
++			device_type = "cpu";
++			compatible = "arm,cortex-a72";
++			reg = <0x00>;
++			enable-method = "spin-table";
++			cpu-release-addr = <0x00 0xd8>;
++			phandle = <0x20>;
++		};
++	};
++};
+
+project projects/seL4_projects_libs/
+diff --git a/libsel4vm/src/arch/arm/vgic/gicv2.h b/libsel4vm/src/arch/arm/vgic/gicv2.h
+index 1616d63..b25f34d 100644
+--- a/libsel4vm/src/arch/arm/vgic/gicv2.h
++++ b/libsel4vm/src/arch/arm/vgic/gicv2.h
+@@ -24,6 +24,8 @@
+ #define GIC_PADDR   0xc4300000
+ #elif defined(CONFIG_PLAT_ZYNQMP)
+ #define GIC_PADDR   0xf9000000
++#elif defined(CONFIG_PLAT_BCM2711)
++#define GIC_PADDR   0xff840000
+ #else
+ #error "Unsupported platform for GIC"
+ #endif
+diff --git a/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/device_map.h b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/device_map.h
+new file mode 100644
+index 0000000..d1ebc81
+--- /dev/null
++++ b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/device_map.h
+@@ -0,0 +1,7 @@
++/*
++ * Copyright 2019, Data61, CSIRO (ABN 41 687 119 230)
++ *
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++
++#pragma once
+diff --git a/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/devices.h b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/devices.h
+new file mode 100644
+index 0000000..d1ebc81
+--- /dev/null
++++ b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/devices.h
+@@ -0,0 +1,7 @@
++/*
++ * Copyright 2019, Data61, CSIRO (ABN 41 687 119 230)
++ *
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++
++#pragma once
+diff --git a/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/guest_vcpu_util.h b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/guest_vcpu_util.h
+new file mode 100644
+index 0000000..eb42123
+--- /dev/null
++++ b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/guest_vcpu_util.h
+@@ -0,0 +1,7 @@
++/*
++ * Copyright 2020, Data61, CSIRO (ABN 41 687 119 230)
++ *
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++
++#define PLAT_CPU_COMPAT "arm,cortex-a53"
+diff --git a/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/vpci.h b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/vpci.h
+new file mode 100644
+index 0000000..4a8e322
+--- /dev/null
++++ b/libsel4vmmplatsupport/plat_include/bcm2711/sel4vmmplatsupport/plat/vpci.h
+@@ -0,0 +1,26 @@
++/*
++ * Copyright 2019, Data61, CSIRO (ABN 41 687 119 230)
++ *
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++#pragma once
++
++/* PCI host bridge memory regions are defined in the pci dts node
++ * supplied to the Linux guest. These values are also reflected here.
++ */
++
++/* PCI host bridge configration space */
++#define PCI_CFG_REGION_ADDR 0xDE000000
++/* PCI host bridge IO space */
++#define PCI_IO_REGION_ADDR 0xDD000000
++/* Size of PCI configuration space */
++#define PCI_CFG_REGION_SIZE 0x1000000
++/* Size of PCI IO space  */
++#define PCI_IO_REGION_SIZE 0x10000
++/* PCI memory space */
++#define PCI_MEM_REGION_ADDR 0xDF000000ull
++/* PCI memory space size */
++#define PCI_MEM_REGION_SIZE 0x1000000
++
++/* FDT IRQ controller address cells definition */
++#define GIC_ADDRESS_CELLS 0x2
+
+project projects/vm/
+diff --git a/components/VM_Arm/plat_include/bcm2711/plat/vmlinux.h b/components/VM_Arm/plat_include/bcm2711/plat/vmlinux.h
+new file mode 100644
+index 0000000..d4bb5f2
+--- /dev/null
++++ b/components/VM_Arm/plat_include/bcm2711/plat/vmlinux.h
+@@ -0,0 +1,16 @@
++/*
++ * Copyright 2017, Data61, CSIRO (ABN 41 687 119 230)
++ *
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++#pragma once
++
++#define GIC_NODE_PATH ""
++
++static const int linux_pt_irqs[] = {};
++
++static const int free_plat_interrupts[] = {};
++static const char *plat_keep_devices[] = {};
++static const char *plat_keep_device_and_disable[] = {};
++static const char *plat_keep_device_and_subtree[] = {};
++static const char *plat_keep_device_and_subtree_and_disable[] = {};
+diff --git a/components/VM_Arm/src/modules/init_ram.c b/components/VM_Arm/src/modules/init_ram.c
+index 326fc66..5b0504e 100644
+--- a/components/VM_Arm/src/modules/init_ram.c
++++ b/components/VM_Arm/src/modules/init_ram.c
+@@ -18,6 +18,9 @@ void WEAK init_ram_module(vm_t *vm, void *cookie)
+                                  vm_config.ram.base,
+                                  vm_config.ram.size,
+                                  vm->mem.map_one_to_one);
++#ifdef CONFIG_PLAT_BCM2711
++    vm_ram_register_at(vm, 0x40000000, 0x20000000, true);
++#endif
+     assert(!err);
+ }
+ 
+
+project projects/vm-examples/
+diff --git a/apps/Arm/vm_minimal/CMakeLists.txt b/apps/Arm/vm_minimal/CMakeLists.txt
+index 2469f64..466f4e9 100644
+--- a/apps/Arm/vm_minimal/CMakeLists.txt
++++ b/apps/Arm/vm_minimal/CMakeLists.txt
+@@ -128,6 +128,37 @@ elseif("${KernelARMPlatform}" STREQUAL "odroidc2")
+         output_dtb_location
+     )
+     AddToFileServer("linux-dtb" "${output_dtb_location}" DEPENDS dtb_gen_target)
++elseif("${KernelARMPlatform}" STREQUAL "rpi4")
++    find_package(camkes-vm-linux REQUIRED)
++    include(${CAMKES_VM_LINUX_HELPERS_PATH})
++    set(cpp_flags "-DKERNELARMPLATFORM_RPI4")
++
++    AddToFileServer("linux" "${CAMKES_VM_IMAGES_DIR}/rpi4/linux")
++    set(rootfs_file "${CAMKES_VM_IMAGES_DIR}/rpi4/rootfs.cpio.gz")
++    AddToFileServer("linux-initrd" ${rootfs_file})
++
++    set(dtb_file "${CAMKES_VM_IMAGES_DIR}/rpi4/rpi4.dtb")
++    set(dts_file "${CAMKES_VM_IMAGES_DIR}/rpi4/rpi4.dts")
++    find_program(DTC_TOOL dtc)
++    if("${DTC_TOOL}" STREQUAL "DTC_TOOL-NOTFOUND")
++        message(FATAL_ERROR "Cannot find 'dtc' program.")
++    endif()
++    execute_process(
++        COMMAND
++            ${DTC_TOOL} -q -I dts -O dtb -o ${dtb_file} ${dts_file}
++        RESULT_VARIABLE error
++    )
++
++    # Updated dtb based on initrd
++    UpdateDtbFromInitrd(
++        ${dtb_file}
++        ${rootfs_file}
++        "0x20000000"
++        dtb_gen_target
++        output_dtb_location
++    )
++    AddToFileServer("linux-dtb" "${output_dtb_location}" DEPENDS dtb_gen_target)
++
+ endif()
+ 
+ AddCamkesCPPFlag(cpp_flags CONFIG_VARS VmEmmc2NoDMA VmVUSB Tk1DeviceFwd Tk1Insecure)
+diff --git a/apps/Arm/vm_minimal/rpi4/devices.camkes b/apps/Arm/vm_minimal/rpi4/devices.camkes
+new file mode 100644
+index 0000000..53fade3
+--- /dev/null
++++ b/apps/Arm/vm_minimal/rpi4/devices.camkes
+@@ -0,0 +1,53 @@
++/*
++ * Copyright 2018, Data61, CSIRO (ABN 41 687 119 230)
++ *
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++
++#include <configurations/vm.h>
++
++#define VM_RAM_BASE 0x10000000
++#define VM_RAM_SIZE 0x20000000
++#define VM_KERNEL_ENTRY (VM_RAM_BASE + 0x80000)
++#define VM_DTB_ADDR 0x24000000
++#define VM_INITRD_ADDR 0x20000000
++
++assembly {
++	composition {}
++	configuration {
++
++        vm0.vm_address_config = {
++            "ram_base" : VAR_STRINGIZE(VM_RAM_BASE),
++            "ram_paddr_base" : VAR_STRINGIZE(VM_RAM_BASE),
++            "ram_size" : VAR_STRINGIZE(VM_RAM_SIZE),
++            "dtb_addr" : VAR_STRINGIZE(VM_DTB_ADDR),
++            "initrd_addr" : VAR_STRINGIZE(VM_INITRD_ADDR),
++            "kernel_entry_addr" : VAR_STRINGIZE(VM_KERNEL_ENTRY),
++        };
++
++        vm0.vm_image_config = {
++            "map_one_to_one" : true,
++        };
++
++        vm0.num_vcpus = 1;
++
++        vm0.dtb = dtb([
++                        {"path": "/soc/cprman@7e101000"},
++                        {"path": "/soc/serial@7e201000"},
++                        {"path": "/soc/dma@7e007000"},
++                        {"path": "/soc/sdhci@7e300000"},
++                        {"path": "/soc/mailbox@7e00b880"},
++                        {"path": "/soc/mailbox@7e00b840"},
++                        {"path": "/emmc2bus/emmc2@7e340000"},
++                        {"path": "/scb/pcie@7d500000"},
++                    ]);
++
++        vm0.untyped_mmios = [
++                    "0xff846000:12", // Interrupt Controller Virtual CPU interface (Virtual Machine view)
++                    "0x40000000:29", // Linux kernel memory regions
++                    "0x10000000:28",
++                    "0x20000000:28",
++                    "0x600000000:30",
++                    ];
++	}
++}
+diff --git a/apps/Arm/vm_minimal/settings.cmake b/apps/Arm/vm_minimal/settings.cmake
+index f1afa18..cab7157 100644
+--- a/apps/Arm/vm_minimal/settings.cmake
++++ b/apps/Arm/vm_minimal/settings.cmake
+@@ -4,7 +4,7 @@
+ # SPDX-License-Identifier: BSD-2-Clause
+ #
+ 
+-set(supported "tk1;tx1;tx2;exynos5422;qemu-arm-virt;odroidc2")
++set(supported "tk1;tx1;tx2;exynos5422;qemu-arm-virt;odroidc2;rpi4")
+ if(NOT "${PLATFORM}" IN_LIST supported)
+     message(FATAL_ERROR "PLATFORM: ${PLATFORM} not supported.
+          Supported: ${supported}")
+@@ -36,3 +36,7 @@ if(${PLATFORM} STREQUAL "qemu-arm-virt")
+     set(KernelArmCPU cortex-a53 CACHE STRING "" FORCE)
+     set(VmInitRdFile ON CACHE BOOL "" FORCE)
+ endif()
++if(${PLATFORM} STREQUAL "rpi4")
++    set(VmInitRdFile OFF CACHE BOOL "" FORCE)
++    set(VmDtbFile ON CACHE BOOL "" FORCE)
++endif()
+diff --git a/settings.cmake b/settings.cmake
+index db7fbf3..18dd3c2 100644
+--- a/settings.cmake
++++ b/settings.cmake
+@@ -13,6 +13,8 @@ else()
+     message(FATAL_ERROR "App does not exist for supported architecture")
+ endif()
+ 
++set(LibUtilsDefaultZfLogLevel 5)
++
+ if(AppArch STREQUAL "Arm")
+     set(CAMKES_ARM_LINUX_DIR "${CMAKE_CURRENT_LIST_DIR}/linux" CACHE STRING "")
+ 
+@@ -71,7 +73,7 @@ if(AppArch STREQUAL "Arm")
+     find_package(seL4 REQUIRED)
+     sel4_configure_platform_settings()
+ 
+-    ApplyData61ElfLoaderSettings(${KernelARMPlatform} ${KernelSel4Arch})
++    ApplyData61ElfLoaderSettings(${KernelPlatform} ${KernelSel4Arch})
+ 
+     if(NUM_NODES MATCHES "^[0-9]+$")
+         set(KernelMaxNumNodes ${NUM_NODES} CACHE STRING "" FORCE)
