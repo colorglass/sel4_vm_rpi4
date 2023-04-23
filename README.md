@@ -57,4 +57,4 @@ U-Boot> bootefi ${loadaddr}
 
 ```
 ### Notice
-It may only be appliable to the specifical version of rpi4b, it was tested to run on the rpi4b v1.5.
+It may only be applicable to the C0 stepping bcm2711 chips corresponding to some new version of rpi4b.
