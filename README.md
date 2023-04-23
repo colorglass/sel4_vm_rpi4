@@ -13,7 +13,7 @@ It uses a raspberry pi 4b 4GB model, offering the follow functions:
 1. initialize the camkes-vm repo
 ```
 mkdir camkes-vm
-cd cmakes-vm
+cd camkes-vm
 repo init -u https://github.com/seL4/camkes-vm-examples-manifest.git
 repo sync
 ```
