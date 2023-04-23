@@ -23,12 +23,12 @@ repo sync
 git clone https://github.com/colorglass/sel4_vm_rpi4.git
 
 # apply patch
-cp sel4_vm_rpi4/apply-patch.sh ..
-cp sel4_vm_rpi4/sel4_vm_rpi4.patch ..
+cp sel4_vm_rpi4/apply-patch.sh .
+cp sel4_vm_rpi4/sel4_vm_rpi4.patch .
 source apply-patch.sh sel4_vm_rpi4.patch
 
-cp sel4_vm_rpi4/linux projects/camkes-vm-images/rpi4/
-cp sel4_vm_rpi4/rootfs.cpio.gz projects/camkes-vm-images/rpi4/
+cp sel4_vm_rpi4/linux projects/camkes-vm-images/rpi4/linux
+cp sel4_vm_rpi4/rootfs.cpio.gz projects/camkes-vm-images/rpi4/rootfs.cpio.gz
 ```
 
 4. build project
@@ -38,7 +38,6 @@ cd build
 ../init-build.sh -DCAMKES_VM_APP=vm_minimal -DPLATFORM=rpi4
 ninja
 ls images/
-capdl-loader-image-arm-bcm2711
 ```
 5. copy the image ```capdl-loader-image-arm-bcm2711``` to the boot sector of sd card (you can also use usb or tftp to pass seL4 image)
 
@@ -57,3 +56,5 @@ U-Boot> fatload usb 0:1 ${loadaddr} capdl-loader-image-arm-bcm2711
 U-Boot> bootefi ${loadaddr}
 
 ```
+### Notice
+It may only be appliable to the specifical version of rpi4b, it was tested to run on the rpi4b v1.5.
